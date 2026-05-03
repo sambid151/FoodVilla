@@ -1,12 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 const Navbar = () => {
   const location = useLocation();
   const isLoggedIn = localStorage.getItem('token');
-  
-  // Dummy cart count for demo purposes
-  const cartCount = 0; 
+  const { cartCount } = useCart();
 
   const handleLogout = () => {
     localStorage.removeItem('token');

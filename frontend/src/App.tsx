@@ -7,11 +7,13 @@ import Auth from './pages/Auth';
 import Cart from './pages/Cart';
 import Orders from './pages/Orders';
 import Footer from './components/Footer';
+import { CartProvider } from './context/CartContext';
 
 function App() {
   return (
-    <Router>
-      <div className="app">
+    <CartProvider>
+      <Router>
+        <div className="app">
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />
@@ -23,6 +25,7 @@ function App() {
         <Footer />
       </div>
     </Router>
+    </CartProvider>
   );
 }
 
