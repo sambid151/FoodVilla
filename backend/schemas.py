@@ -17,10 +17,15 @@ class User(UserBase):
     class Config:
         from_attributes = True
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+    new_password: str
+
 # --- Token Schema ---
 class Token(BaseModel):
     access_token: str
     token_type: str
+    user_name: Optional[str] = None
 
 class TokenData(BaseModel):
     email: Optional[str] = None

@@ -11,6 +11,17 @@ const Cart = () => {
     area: address?.area || 'CRPF Square',
     phone: address?.phone || ''
   });
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+  const showToast = (msg: string, type: 'success' | 'error' = 'success', callback?: () => void) => {
+    setToastMsg(msg);
+    setToastType(type);
+    setTimeout(() => {
+      setToastMsg('');
+      if (callback) callback();
+    }, 2500);
+  };
 
   const total = cart.reduce((sum, item) => sum + (item.menu_item.price * item.quantity), 0);
 
@@ -152,7 +163,7 @@ const Cart = () => {
             className="btn btn-primary" 
             style={{ width: '100%', marginTop: '2rem', padding: '1rem', fontSize: '1.1rem', opacity: address ? 1 : 0.5, cursor: address ? 'pointer' : 'not-allowed' }}
             disabled={!address}
-            onClick={() => alert('Order Placed Successfully!')}
+            onClick={() => showToast('Order Placed Successfully!', 'success')}
           >
             {address ? 'Place Order' : 'Add Address to Continue'}
           </button>
@@ -163,6 +174,11 @@ const Cart = () => {
             </p>
           )}
         </div>
+      </div>
+
+      <div className={`toast-popup ${toastMsg ? 'show' : ''} ${toastType === 'success' ? 'toast-success' : 'toast-error'}`}>
+        <div className="toast-icon">{toastType === 'success' ? '✓' : '✕'}</div>
+        <div className="toast-message">{toastMsg}</div>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import Menu from './pages/Menu';
 import Auth from './pages/Auth';
 import Cart from './pages/Cart';
 import Orders from './pages/Orders';
+import ResetPassword from './pages/ResetPassword';
 import Footer from './components/Footer';
 import { CartProvider } from './context/CartContext';
 
@@ -19,6 +20,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/menu" element={<Menu />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/orders" element={<Orders />} />
         </Routes>

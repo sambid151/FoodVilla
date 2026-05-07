@@ -8,18 +8,22 @@ const Auth = () => {
   const [errors, setErrors] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '' });
   const [touched, setTouched] = useState({ firstName: false, lastName: false, email: false, phone: false, password: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginFailed, setLoginFailed] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   // Allowed domains for email validation
   const ALLOWED_DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'live.com'];
 
-  const showToastAndNavigate = (msg: string, callback: () => void) => {
+  const showToastAndNavigate = (msg: string, type: 'success' | 'error' = 'success', callback?: () => void) => {
     setToastMsg(msg);
+    setToastType(type);
     setTimeout(() => {
       setToastMsg('');
-      callback();
-    }, 1500);
+      if (callback) callback();
+    }, 2500);
   };
 
   // Validation Functions
@@ -109,22 +113,15 @@ const Auth = () => {
   };
 
   useEffect(() => {
-    // Reset errors and touched state when switching between login and signup
+    // Reset errors, touched state, and failure state when switching
     setErrors({ firstName: '', lastName: '', email: '', phone: '', password: '' });
     setTouched({ firstName: false, lastName: false, email: false, phone: false, password: false });
+    setLoginFailed(false);
   }, [isLogin]);
 
   const processPendingCart = (token: string) => {
-    const pendingItems = JSON.parse(localStorage.getItem('pendingCartItems') || '[]');
-    if (pendingItems.length > 0) {
-      const mockCart = JSON.parse(localStorage.getItem(`mockCart_${token}`) || '[]');
-      pendingItems.forEach((item: any) => {
-         mockCart.push({ id: Date.now() + Math.random(), menu_item_id: item.menu_item_id, quantity: item.quantity, menu_item: { id: item.menu_item_id, name: "Pending Menu Item", price: 40, image_url: "https://images.unsplash.com/photo-1544256661-d7031daabf2e?w=100" } });
-      });
-      localStorage.setItem(`mockCart_${token}`, JSON.stringify(mockCart));
-      localStorage.removeItem('pendingCartItems');
-      alert("Items from your guest session were added to your cart!");
-    }
+    // This will be implemented in the future when real cart persistence is added
+    console.log("Processing pending cart for token", token);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -152,7 +149,7 @@ const Auth = () => {
       const lockoutTime = localStorage.getItem(`lockout_${cleanEmail}`);
       if (lockoutTime && Date.now() < parseInt(lockoutTime)) {
         const remainingSeconds = Math.ceil((parseInt(lockoutTime) - Date.now()) / 1000);
-        alert(`Account locked due to too many failed attempts. Try again in ${remainingSeconds} second(s).`);
+        showToastAndNavigate(`Account locked. Try again in ${remainingSeconds}s.`, 'error');
         setIsSubmitting(false);
         return;
       }
@@ -170,35 +167,18 @@ const Auth = () => {
         localStorage.removeItem(`lockout_${cleanEmail}`);
         localStorage.setItem('token', response.data.access_token);
         
-        showToastAndNavigate(`Welcome back, ${cleanEmail}! Logged in successfully.`, () => {
+        showToastAndNavigate(`Welcome back, ${response.data.user_name || cleanEmail}! Logged in successfully.`, 'success', () => {
           processPendingCart(response.data.access_token);
           navigate('/cart');
         });
-      } catch (error) {
-        console.warn("Backend API not reachable. Using mock local authentication.");
-        const users = JSON.parse(localStorage.getItem('mockUsers') || '[]');
-        const user = users.find((u: any) => u.email === cleanEmail && u.password === password);
-        
-        if (user) {
-          localStorage.removeItem(`failedAttempts_${cleanEmail}`);
-          localStorage.removeItem(`lockout_${cleanEmail}`);
-          localStorage.setItem('token', 'mock_token_123');
-          
-          showToastAndNavigate(`${user.name} logged in successfully!`, () => {
-            processPendingCart('mock_token_123');
-            navigate('/cart');
-          });
+      } catch (error: any) {
+        setIsSubmitting(false);
+        if (error.response) {
+          // Backend responded with an error (e.g., 401 Unauthorized)
+          showToastAndNavigate(error.response.data.detail || 'Login failed. Please check your credentials.', 'error');
         } else {
-          let attempts = parseInt(localStorage.getItem(`failedAttempts_${cleanEmail}`) || '0');
-          attempts += 1;
-          
-          if (attempts >= 3) {
-            localStorage.setItem(`lockout_${cleanEmail}`, (Date.now() + 60000).toString());
-            alert('Too many failed attempts. Account locked for 1 minute.');
-          } else {
-            localStorage.setItem(`failedAttempts_${cleanEmail}`, attempts.toString());
-            alert(`Invalid email or password. Attempt ${attempts} of 3.`);
-          }
+          // Network error or server offline
+          showToastAndNavigate('Cannot connect to server. Please check if the backend is running.', 'error');
         }
       }
     } else {
@@ -209,40 +189,20 @@ const Auth = () => {
           phone: cleanPhone,
           password: password
         });
-        showToastAndNavigate(`${cleanFirstName} signed up successfully!`, () => {
+        showToastAndNavigate(`${cleanFirstName} signed up successfully!`, 'success', () => {
           setIsLogin(true);
           setIsSubmitting(false);
         });
         return; // wait for toast
-      } catch (error) {
-        console.warn("Backend API not reachable. Using mock local authentication.");
-        const users = JSON.parse(localStorage.getItem('mockUsers') || '[]');
-        
-        if (users.find((u: any) => u.email === cleanEmail)) {
-          alert('Email already registered. Please login.');
-          setIsSubmitting(false);
-          return;
+      } catch (error: any) {
+        setIsSubmitting(false);
+        if (error.response) {
+          // Backend responded with an error (e.g., 400 Email already registered)
+          showToastAndNavigate(error.response.data.detail || 'Signup failed.', 'error');
+        } else {
+          // Network error or server offline
+          showToastAndNavigate('Cannot connect to server. Please check if the backend is running.', 'error');
         }
-        if (users.find((u: any) => u.phone === cleanPhone)) {
-          alert('Phone already registered. Please login.');
-          setIsSubmitting(false);
-          return;
-        }
-        
-        users.push({
-          name: fullName,
-          email: cleanEmail,
-          phone: cleanPhone,
-          password: password // In mock, plaintext. Backend handles hashing.
-        });
-        localStorage.setItem('mockUsers', JSON.stringify(users));
-        
-        showToastAndNavigate(`${cleanFirstName} signed up successfully!`, () => {
-          setIsLogin(true);
-          setFormData({ firstName: '', lastName: '', email: '', phone: '', password: '' });
-          setIsSubmitting(false);
-        });
-        return; // wait for toast
       }
     }
   };
@@ -316,16 +276,63 @@ const Auth = () => {
           </div>
           <div className="form-group">
             <label className="form-label">Password <span style={{color: 'var(--accent)'}}>*</span></label>
-            <input 
-              type="password" 
-              name="password" 
-              className={`form-control ${errors.password ? 'input-error' : ''}`}
-              value={formData.password}
-              onChange={handleChange} 
-              onBlur={handleBlur}
-            />
+            <div className="password-input-wrapper">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                name="password" 
+                className={`form-control ${errors.password ? 'input-error' : ''}`}
+                value={formData.password}
+                onChange={handleChange} 
+                onBlur={handleBlur}
+                style={{ paddingRight: '3rem' }}
+              />
+              <button 
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
             {errors.password && <span style={{color: 'var(--accent)', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block'}}>{errors.password}</span>}
+            
+            {isLogin && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => navigate('/reset-password', { state: { email: formData.email } })}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-light)', fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}
+                  className="hover-underline"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            )}
           </div>
+
+          {isLogin && loginFailed && (
+            <div className="fade-in" style={{ 
+              background: 'rgba(239, 68, 68, 0.05)', 
+              border: '1px dashed var(--accent)', 
+              padding: '0.75rem', 
+              borderRadius: '8px', 
+              marginBottom: '1.5rem',
+              textAlign: 'center'
+            }}>
+              <p style={{ color: 'var(--accent)', fontSize: '0.9rem', fontWeight: '500' }}>
+                Can't remember your password? 
+                <button 
+                  type="button"
+                  onClick={() => navigate('/reset-password', { state: { email: formData.email } })}
+                  style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer', marginLeft: '0.5rem' }}
+                >
+                  Reset it here
+                </button>
+              </p>
+            </div>
+          )}
+
           <button 
             type="submit" 
             className="btn btn-primary" 
@@ -348,9 +355,9 @@ const Auth = () => {
         </p>
       </div>
 
-      <div className={`toast-popup ${toastMsg ? 'show' : ''}`}>
-        <div className="toast-icon">✓</div>
-        <div>{toastMsg}</div>
+      <div className={`toast-popup ${toastMsg ? 'show' : ''} ${toastType === 'success' ? 'toast-success' : 'toast-error'}`}>
+        <div className="toast-icon">{toastType === 'success' ? '✓' : '✕'}</div>
+        <div className="toast-message">{toastMsg}</div>
       </div>
     </div>
   );
