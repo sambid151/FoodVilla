@@ -21,9 +21,11 @@ class MenuItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     category = Column(String, index=True)
+    description = Column(String, nullable=True)
     price = Column(Float)
     image_url = Column(String, nullable=True)
     is_available = Column(Boolean, default=True)
+    is_specialty = Column(Boolean, default=False)
 
 class CartItem(Base):
     __tablename__ = "cart_items"
@@ -44,6 +46,7 @@ class Order(Base):
     total_amount = Column(Float)
     delivery_address = Column(String)
     status = Column(String, default="Pending") # Pending, Confirmed, Delivered
+    payment_method = Column(String) # COD, UPI
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="orders")

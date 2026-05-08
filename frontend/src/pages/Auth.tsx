@@ -28,26 +28,26 @@ const Auth = () => {
 
   // Validation Functions
   const validateFirstName = (name: string) => {
-    if (!name.trim()) return "First name is required.";
+    if (!name || !name.trim()) return "First name is required.";
     return "";
   };
 
   const validateLastName = (name: string) => {
-    if (!name.trim()) return "Last name is required.";
+    if (!name || !name.trim()) return "Last name is required.";
     return "";
   };
 
   const validatePhone = (phone: string) => {
-    if (!phone.trim()) return "Phone number is required.";
-    const phoneRegex = /^\+91[6-9]\d{9}$/;
+    if (!phone || !phone.trim()) return "Phone number is required.";
+    const phoneRegex = /^[6789]\d{9}$/;
     if (!phoneRegex.test(phone.trim())) {
-      return "Enter valid Indian mobile number with +91 followed by 10 digits";
+      return "Enter a valid 10-digit Indian mobile number";
     }
     return "";
   };
 
   const validateEmail = (email: string) => {
-    if (!email.trim()) return "Email is required.";
+    if (!email || !email.trim()) return "Email is required.";
     const cleanEmail = email.trim().toLowerCase();
     if (cleanEmail.includes(' ')) return "Email cannot contain spaces.";
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -64,9 +64,9 @@ const Auth = () => {
   const validatePassword = (password: string) => {
     if (!password) return "Password is required.";
     if (password.includes(' ')) return "Password cannot contain spaces.";
-    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)[^\s]{10,}$/;
+    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)[^\s]{8,}$/;
     if (!passwordRegex.test(password)) {
-      return "Password must be at least 10 characters and include letters and numbers";
+      return "Password must be at least 8 characters and include letters and numbers";
     }
     return "";
   };
@@ -86,14 +86,20 @@ const Auth = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'phone') {
+      // Only allow digits and max 10
+      const cleanValue = value.replace(/\D/g, '').slice(0, 10);
+      setFormData(prev => ({ ...prev, [name]: cleanValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
     
     // Clear error for that field when typing
     if (touched[name as keyof typeof touched]) {
       let error = "";
       if (name === 'firstName' && !isLogin) error = validateFirstName(value);
       if (name === 'lastName' && !isLogin) error = validateLastName(value);
-      if (name === 'phone' && !isLogin) error = validatePhone(value);
+      if (name === 'phone' && !isLogin) error = validatePhone(value.replace(/\D/g, '').slice(0, 10));
       if (name === 'email') error = validateEmail(value);
       if (name === 'password') error = isLogin ? (value ? "" : "Password is required.") : validatePassword(value);
       setErrors(prev => ({ ...prev, [name]: error }));
@@ -114,14 +120,26 @@ const Auth = () => {
 
   useEffect(() => {
     // Reset errors, touched state, and failure state when switching
+    setFormData({ firstName: '', lastName: '', email: '', phone: '', password: '' });
     setErrors({ firstName: '', lastName: '', email: '', phone: '', password: '' });
     setTouched({ firstName: false, lastName: false, email: false, phone: false, password: false });
     setLoginFailed(false);
   }, [isLogin]);
 
   const processPendingCart = (token: string) => {
-    // This will be implemented in the future when real cart persistence is added
-    console.log("Processing pending cart for token", token);
+    const pendingItemStr = sessionStorage.getItem('pendingItem');
+    if (pendingItemStr) {
+      try {
+        const item = JSON.parse(pendingItemStr);
+        // We'll use the existing useCart context indirectly by triggering a cart update
+        // Since we are redirecting to /cart, we can just let the Cart component handle it
+        // Or better, we can add a flag to the session storage to tell the Cart component to add this item
+        sessionStorage.setItem('shouldAddPendingItem', 'true');
+        console.log("Pending item marked for addition:", item);
+      } catch (e) {
+        console.error("Failed to parse pending item", e);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,6 +149,7 @@ const Auth = () => {
     setTouched({ firstName: true, lastName: true, email: true, phone: true, password: true });
     
     if (!validateForm()) {
+      showToastAndNavigate('Please fill all the required details correctly.', 'error');
       return;
     }
 
@@ -186,7 +205,7 @@ const Auth = () => {
         await axios.post('http://localhost:8000/auth/signup', {
           name: fullName,
           email: cleanEmail,
-          phone: cleanPhone,
+          phone: `+91${cleanPhone}`,
           password: password
         });
         showToastAndNavigate(`${cleanFirstName} signed up successfully!`, 'success', () => {
@@ -250,15 +269,18 @@ const Auth = () => {
           {!isLogin && (
             <div className="form-group">
               <label className="form-label">Phone Number <span style={{color: 'var(--accent)'}}>*</span></label>
-              <input 
-                type="text" 
-                name="phone" 
-                placeholder="+91XXXXXXXXXX"
-                className={`form-control ${errors.phone ? 'input-error' : ''}`}
-                value={formData.phone}
-                onChange={handleChange} 
-                onBlur={handleBlur}
-              />
+              <div className="phone-input-wrapper">
+                <div className="phone-prefix">+91</div>
+                <input 
+                  type="text" 
+                  name="phone" 
+                  placeholder="XXXXXXXXXX"
+                  className={`form-control phone-input ${errors.phone ? 'input-error' : ''}`}
+                  value={formData.phone}
+                  onChange={handleChange} 
+                  onBlur={handleBlur}
+                />
+              </div>
               {errors.phone && <span style={{color: 'var(--accent)', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block'}}>{errors.phone}</span>}
             </div>
           )}
@@ -336,8 +358,8 @@ const Auth = () => {
           <button 
             type="submit" 
             className="btn btn-primary" 
-            style={{width: '100%', marginBottom: '1rem', padding: '1rem', opacity: (isSubmitting || hasErrors) ? 0.7 : 1, display: 'flex', justifyContent: 'center'}}
-            disabled={isSubmitting || hasErrors}
+            style={{width: '100%', marginBottom: '1rem', padding: '1rem', opacity: isSubmitting ? 0.7 : 1, display: 'flex', justifyContent: 'center'}}
+            disabled={isSubmitting}
           >
             {isSubmitting ? <div className="spinner"></div> : (isLogin ? 'Log In' : 'Sign Up')}
           </button>

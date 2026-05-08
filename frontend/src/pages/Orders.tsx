@@ -17,6 +17,7 @@ interface Order {
   total_amount: number;
   delivery_address: string;
   status: string;
+  payment_method: string;
   created_at: string;
   items: OrderItem[];
 }
@@ -82,7 +83,15 @@ const Orders = () => {
                 {order.items.map(item => (
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <img src={item.menu_item.image_url} alt={item.menu_item.name} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
+                      <img 
+                        src={item.menu_item.image_url} 
+                        alt={item.menu_item.name} 
+                        style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} 
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=100';
+                          e.currentTarget.onerror = null;
+                        }}
+                      />
                       <span>{item.quantity}x {item.menu_item.name}</span>
                     </div>
                     <span>₹{(item.price_at_time * item.quantity).toFixed(2)}</span>
@@ -90,8 +99,9 @@ const Orders = () => {
                 ))}
               </div>
               
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p><strong>Delivery to:</strong> {order.delivery_address}</p>
+                <p><span style={{background: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: '600'}}>💳 {order.payment_method}</span></p>
               </div>
             </div>
           ))}

@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 import datetime
@@ -34,9 +35,11 @@ class TokenData(BaseModel):
 class MenuItemBase(BaseModel):
     name: str
     category: str
+    description: Optional[str] = None
     price: float
     image_url: Optional[str] = None
     is_available: bool = True
+    is_specialty: bool = False
 
 class MenuItem(MenuItemBase):
     id: int
@@ -80,6 +83,7 @@ class OrderItem(OrderItemBase):
 class OrderBase(BaseModel):
     delivery_address: str
     total_amount: float
+    payment_method: str
 
 class OrderCreate(OrderBase):
     pass

@@ -19,7 +19,8 @@ def place_order(order_data: schemas.OrderCreate, current_user: models.User = Dep
     new_order = models.Order(
         user_id=current_user.id,
         delivery_address=order_data.delivery_address,
-        total_amount=order_data.total_amount
+        total_amount=order_data.total_amount,
+        payment_method=order_data.payment_method
     )
     db.add(new_order)
     db.commit()
